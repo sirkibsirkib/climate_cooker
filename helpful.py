@@ -1,6 +1,13 @@
 from math import pi
 import collections
 
+class Climate:
+    TROPICAL_RAINFOREST, TROPICAL_MONSOON, SAVANNAH, HOT_DESERT,\
+    HOT_STEPPE, COLD_DESERT, COLD_STEPPE, MARITIME_EAST_COAST,\
+    MARITIME_WEST_COAST, MEDITERRANEAN,TEMPERATE_MONSOON,\
+    LAUTENTIAN, SUBARCTIC, MANCHURIAN, SUBARCTIC_EAST,\
+    TUNDRA, ICECAP = range(17)
+
 def flatten(iterable):
     for el in iterable:
         if isinstance(el, collections.Iterable) and not isinstance(el, str):
@@ -49,3 +56,41 @@ def coriolis_rotation(southness):
         return -(.25 - abs(southness - .25)) * pi
     else:
         return (.25 - abs(southness - .75)) * pi
+
+def climate_color_func(value):
+    if value == Climate.TROPICAL_RAINFOREST:
+        return [86, 155, 71]
+    elif value == Climate.TROPICAL_MONSOON:
+        return [255, 255, 255]
+    elif value == Climate.SAVANNAH:
+        return [186, 167, 37]
+    elif value == Climate.HOT_DESERT:
+        return [255, 249, 200]
+    elif value == Climate.HOT_STEPPE:
+        return [244, 229, 127]
+    elif value == Climate.COLD_DESERT:
+        return [138, 139, 159]
+    elif value == Climate.COLD_STEPPE:
+        return [210, 188, 220]
+    elif value == Climate.MARITIME_EAST_COAST:
+        return [255, 255, 255]
+    elif value == Climate.MARITIME_WEST_COAST:
+        return [255, 255, 255]
+    elif value == Climate.MEDITERRANEAN:
+        return [45, 186, 168]
+    elif value == Climate.TEMPERATE_MONSOON:
+        return [208, 248, 198]
+    elif value == Climate.LAUTENTIAN:
+        return [255, 255, 255]
+    elif value == Climate.SUBARCTIC:
+        return [87, 76, 255]
+    elif value == Climate.MANCHURIAN:
+        return [255, 255, 255]
+    elif value == Climate.SUBARCTIC_EAST:
+        return [110, 199, 210]
+    elif value == Climate.TUNDRA:
+        return [183, 190, 200]
+    elif value == Climate.ICECAP:
+        return [177, 247, 255]
+    else:
+        return [0, 0, 0]
