@@ -10,6 +10,7 @@ The program is initialized with an input file representing an equirectangular pr
 The most obvious choice for input map is a color png image with either 3 or 4 channels (or 'planes'); Any 4th (alpha) channel is disregarded. The coloring of the pixels will be interpreted as height. The coloring is interpreted as follows (also given in [r,g,b]):
 
 color | rgb | interpretation
+-------|------|------------------
 black | [0,0,0] | water
 white | [255,255,255] | height 1 (sea level)
 red | [255,0,0] | height 2
