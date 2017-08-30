@@ -1,6 +1,9 @@
 import png
 from math import sqrt, ceil, atan2, pi
-from helpful import flatten, rel_color_func, coriolis_rotation, Climate, classify, rgb_to_height
+import helpful
+import climates
+from climates import Climate
+import color_funcs
 
 
 class Map:
@@ -10,7 +13,7 @@ class Map:
         self.height = len(self.cells)
 
     def render(self, path, color_func):
-        p = [flatten(map(color_func, row)) for row in self.cells]
+        p = [helpful.flatten(map(color_func, row)) for row in self.cells]
         f = open(path, 'wb')
         w = png.Writer(self.width, self.height)
         w.write(f, p)
@@ -36,8 +39,8 @@ class Map:
         return self.cells[y][x]
 
     def normalize(self, lower_bound, upper_bound, integers=True):
-        min_value = min(flatten(self.cells))
-        max_value = max(flatten(self.cells))
+        min_value = min(helpful.flatten(self.cells))
+        max_value = max(helpful.flatten(self.cells))
         d_before = max_value - min_value
         d_after = upper_bound - lower_bound
         def normalize_aux(raw):
@@ -97,7 +100,7 @@ def relief_map(path):
         quit()
     for y in png_data[2]:
         l = list(y)
-        row = [rgb_to_height(l[n:n + 3]) for n in range(0, len(l), N)]
+        row = [color_funcs.rgb_to_height(l[n:n + 3]) for n in range(0, len(l), N)]
         cells.append(row)
     return Map(cells)
 
@@ -113,13 +116,13 @@ def pressure_map(rel_map, july=True):
 
 
     # put in interior pressure zones
-    x_gap = ceil(rel_map.width / 23)
+    x_gap = ceil(rel_map.width / 39)
     y_gap = ceil(rel_map.height / 19)
     for j in range(19):
         if j/19 < .1 or (j/19 > .45 and j/19 < .55) or j/19 > .9:
             continue
-        for i in range(23):
-            int_x = int(rel_map.width * i / 23)
+        for i in range(39):
+            int_x = int(rel_map.width * i / 39)
             int_y = int(rel_map.height * j / 19)
             if rel_map.get(int_x, int_y) > 0 and \
                             rel_map.get(int_x+x_gap, int_y) > 0 and \
@@ -159,24 +162,19 @@ def pressure_map(rel_map, july=True):
         pre_map.set(x, y, 1)
     for (x,y) in high_nodes:
         pre_map.set(x, y, 2)
-    pre_map.render('pressure_nodes.png', rel_color_func)
+    pre_map.render('output/pressure_nodes_'+('july.png' if july else 'january.png'), color_funcs.rel_color_func)
 
     def pressure_at(x, y):
         press = 0.0
         for (lx,ly) in low_nodes:
             x_dist = min(abs(lx - x), rel_map.width - abs(lx - x))
             dist = (x_dist ** 2 + (ly - y) ** 2)
-            press -= 3 / (dist + max_v_walk)
+            press -= 3 / (dist + max_v_walk*2)
         for (hx,hy) in high_nodes:
             x_dist = min(abs(hx - x), rel_map.width - abs(hx - x))
             dist = (x_dist ** 2 + (hy - y) ** 2)
-            press += 3 / (dist + max_v_walk)
-        # print(press)
+            press += 3 / (dist + max_v_walk*2)
         return press
-        # if press > 0:
-        #     return press**30.003
-        # else:
-        #     return -((-press)**30.003)
 
     pressure_cells = [
         [pressure_at(x, y) for x in range(rel_map.width)] for y in range(rel_map.height)
@@ -189,17 +187,32 @@ def pressure_map(rel_map, july=True):
 def wind_map(pre_map):
     cells = []
     max_power = 0
+
+    pow_tot = 0.0
+    pow_count = 0
     for y in range(pre_map.height):
         row = []
         for x in range(pre_map.width):
-            x_flow = pre_map.get(x-1 if x-1 >= 0 else pre_map.width-1, y) - pre_map.get((x+1)%pre_map.width, y)
-            y_flow = pre_map.get(x, y-1 if y-1 >= 0 else pre_map.height-1) - pre_map.get(x, (y+1)%pre_map.height)
 
-            rot = 1.0 * atan2(y_flow, x_flow) + coriolis_rotation(y / pre_map.height)
-            power = sqrt(x_flow**2.0 + y_flow**2.0)
-            max_power = max(max_power, power)
+            x_flow = pre_map.get(x-1 if x-1 != 0 else pre_map.width-1, y) \
+                     - pre_map.get((x+1)%pre_map.width, y)
+            y_flow = pre_map.get(x, y-1 if y-1 != 0 else pre_map.height-1) \
+                     - pre_map.get(x, (y+1)%pre_map.height)
+
+            rot = atan2(y_flow, x_flow) + helpful.coriolis_rotation(y / pre_map.height)
+            rot = helpful.wrap_radians(rot)
+
+            power = sqrt(x_flow*x_flow + y_flow*y_flow)
+            if power > max_power:
+                max_power = power
             row.append((rot, power))
+            pow_tot += power
+            pow_count += 1
         cells.append(row)
+
+    print('avg power', pow_tot/pow_count)
+    print('max power', max_power)
+
     cells = [
         [(rot, power/max_power) for (rot, power) in row] for row in cells
     ]
@@ -213,6 +226,8 @@ def rain_cloud(x, y, water, rel_map, win_map, rai_map, prev_height, depth_remain
         0.0,
         1.0-(.9**(max(0, .3+this_height-prev_height)))
     )
+
+    deposit_fraction *= (1-pow)
     rai_map.increment(x, y, water*deposit_fraction)
     water *= (1-deposit_fraction)
 
@@ -245,9 +260,9 @@ def rain_cloud(x, y, water, rel_map, win_map, rai_map, prev_height, depth_remain
             abs(rot - angle + pi*2),
             abs(rot - angle - pi*2)
         )
-        if diff > pi/1.52:
+        if diff > pi/1.1:
             continue
-        share = 1 / (diff + 0.1)
+        share = 1 / (diff + 0.04)
         spent_shares += share
         recurse_clouds.append((share, go_x, go_y))
     for (share, go_x, go_y) in recurse_clouds:
@@ -303,11 +318,11 @@ def climate_map(rel_map, rai_jul, rai_jan, hea_jul, hea_jan):
             if rel_map.get(x, y) == 0:
                 row.append(Climate.WATER)
                 continue
-            classification = classify(hea_jul.get(x,y),
+            classification = climates.classify(hea_jul.get(x,y),
                                               hea_jan.get(x,y),
                                               rai_jul.get(x,y),
                                               rai_jan.get(x,y)) if y < rel_map.height / 2 else \
-                    classify(hea_jan.get(x, y),
+                climates.classify(hea_jan.get(x, y),
                                      hea_jul.get(x, y),
                                      rai_jan.get(x, y),
                                      rai_jul.get(x, y))
