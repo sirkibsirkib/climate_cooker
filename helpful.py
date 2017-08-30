@@ -8,12 +8,12 @@ def flatten(iterable):
             yield el
 
 def wrap_radians(x):
-    while x < 0: x += 2
-    while x > 2: x -= 2
+    while x < 0.0: x += 2.0
+    while x > 2.0: x -= 2.0
     return x
 
 def coriolis_rotation(southness):
     if southness < .5:
-        return 2*-(.25 - abs(southness - .25))
+        return 2.0*-(.25 - abs(southness - .25))
     else:
-        return 2*(.25 - abs(southness - .75))
+        return 2.0*(.25 - abs(southness - .75))

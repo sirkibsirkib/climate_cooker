@@ -20,30 +20,36 @@ def gray_scale_color_func(x):
 
 
 
+# returns abs() distance between two radii, the shortest way around the circle
 def wrap_rad_abs(a, b):
-    x = abs(a-b)
-    return min(x, 2.0-x)
+    return min(
+        abs(a-b),
+        abs(a-b-2.0),
+        abs(a-b+2.0),
+    )
 
 # rgb bumps occur at 0, 4/3pi and 2/3pi respectively
 # when more than
-def wind_bump_helper(rot_rads, bump_center):
-    # abs() function, but allowed to wrap around 2*pi
+def color_bump(rot_rads, bump_center):
     wra = wrap_rad_abs(rot_rads, bump_center)
     if wra <= .33333:
-        return 255
+        return 1.0
     elif wra >= .66666:
-        return 0
+        return 0.0
     else:
-        return int(255.0 - (wra - .33333)*3.0*255.0)
+        return 1.0 - ((wra - .33333)*3.0)
 
 
 def wind_color_func(rot_power):
+
     (rot, power) = rot_power
-    if rot < 0:
-        rot += 2
-    col = [wind_bump_helper(rot, 0.0) * power,
-            wind_bump_helper(rot, 1.33333) * power,
-            wind_bump_helper(rot, .66666) * power]
+    assert power >= 0
+    assert power <= 1
+    col = [
+        int(255.0 * color_bump(rot, 0.0) * power),
+        int(255.0 * color_bump(rot, 1.33333) * power),
+        int(255.0 * color_bump(rot, .66666) * power),
+    ]
     return col
 
 

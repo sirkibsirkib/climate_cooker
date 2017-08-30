@@ -20,10 +20,24 @@ class Map:
         f.close()
 
     def correct_coordinate(self, x, y):
-        while x < 0: x += self.width
-        while x >= self.width: x -= self.width
-        while y < 0: y += self.height
-        while y >= self.height: y -= self.height
+        # wrap over poles
+        check_again = True
+        while check_again:
+            check_again = False
+            if y < 0:
+                y *= -1
+                x += int(self.width/2)
+                check_again = True
+            if y >= self.height:
+                y = self.height - y
+                x -= int(self.width/2)
+                check_again = True
+
+        # wrap around edges
+        while x < 0:
+            x += self.width
+        while x >= self.width:
+            x -= self.width
         return x, y
 
     def set(self, x, y, value):
@@ -64,10 +78,10 @@ def txt_to_map(path):
     # non-integers represent 0 (ocean)
     for row in open(path):
         row_cells = []
-        for letter in row:
-            if letter == '\n': continue
+        for symbol in row:
+            if symbol == '\n': continue
             try:
-                cell = int(letter)
+                cell = int(symbol)
                 if cell > 7:
                     cell = 7
                     warning = True
@@ -114,31 +128,33 @@ def pressure_map(rel_map, july=True):
     high_nodes = []
     max_v_walk = int(rel_map.height / 7)
 
-
+    interior_x_nodes = int(rel_map.width/5)
+    interior_y_nodes = int(rel_map.height/5)
     # put in interior pressure zones
-    x_gap = ceil(rel_map.width / 39)
-    y_gap = ceil(rel_map.height / 19)
-    for j in range(19):
-        if j/19 < .1 or (j/19 > .45 and j/19 < .55) or j/19 > .9:
+    x_gap = ceil(rel_map.width / interior_x_nodes / 2)
+    y_gap = ceil(rel_map.height / interior_y_nodes / 2)
+    for j in range(interior_y_nodes):
+        if j/interior_y_nodes < .1 or j/interior_y_nodes > .9:
             continue
-        for i in range(39):
-            int_x = int(rel_map.width * i / 39)
-            int_y = int(rel_map.height * j / 19)
+        for i in range(interior_x_nodes):
+            int_x = int(rel_map.width * i / interior_x_nodes)
+            int_y = int(rel_map.height * j / interior_y_nodes)
             if rel_map.get(int_x, int_y) > 0 and \
                             rel_map.get(int_x+x_gap, int_y) > 0 and \
                             rel_map.get(int_x-x_gap, int_y) > 0 and \
                             rel_map.get(int_x, int_y+y_gap) > 0 and \
                             rel_map.get(int_x, int_y-y_gap) > 0:
-                if (j/19 < .5 and july) or (j/19 > .5 and not july):
+                if (j/interior_y_nodes < .5 and july) or (j/interior_y_nodes > .5 and not july):
                     low_nodes.append((int_x, int_y))
                 else:
                     high_nodes.append((int_x, int_y))
 
 
     # put in pressure bands
+    band_x_nodes = int(rel_map.width/2)
     for i in [1,2,3,4,5]:
         relevant_list = low_nodes if i%2==1 else high_nodes
-        x_increment = ceil(rel_map.width / 73)
+        x_increment = 2
         x_pos = 1
         # offsets the start position vertically by a small amount
         flip_up = True
@@ -180,25 +196,27 @@ def pressure_map(rel_map, july=True):
         [pressure_at(x, y) for x in range(rel_map.width)] for y in range(rel_map.height)
     ]
     pre_map = Map(pressure_cells)
-    pre_map.normalize(0, 255, integers=True)
+    pre_map.normalize(0, 255, integers=False)
     return pre_map
 
 
 def wind_map(pre_map):
     cells = []
     max_power = 0
-
-    pow_tot = 0.0
-    pow_count = 0
     for y in range(pre_map.height):
+        if y == 0:
+            cells.append([(1.5, 0.0) for _ in range(pre_map.width)])
+            continue
+        if y == pre_map.height - 1:
+            cells.append([(0.5, 0.0) for _ in range(pre_map.width)])
+            continue
+
         row = []
         for x in range(pre_map.width):
-
-            x_flow = pre_map.get(x-1 if x-1 != 0 else pre_map.width-1, y) \
-                     - pre_map.get((x+1)%pre_map.width, y)
-            y_flow = pre_map.get(x, y-1 if y-1 != 0 else pre_map.height-1) \
-                     - pre_map.get(x, (y+1)%pre_map.height)
-
+            # get() automatically wraps correctly
+            x_flow = pre_map.get(x+1, y) - pre_map.get(x-1, y)
+            y_flow = pre_map.get(x, y+1) - pre_map.get(x, y-1)
+            # print(x_flow, y_flow)
             rot = atan2(y_flow, x_flow) + helpful.coriolis_rotation(y / pre_map.height)
             rot = helpful.wrap_radians(rot)
 
@@ -206,12 +224,7 @@ def wind_map(pre_map):
             if power > max_power:
                 max_power = power
             row.append((rot, power))
-            pow_tot += power
-            pow_count += 1
         cells.append(row)
-
-    print('avg power', pow_tot/pow_count)
-    print('max power', max_power)
 
     cells = [
         [(rot, power/max_power) for (rot, power) in row] for row in cells
@@ -219,29 +232,7 @@ def wind_map(pre_map):
     return Map(cells)
 
 
-def rain_cloud(x, y, water, rel_map, win_map, rai_map, prev_height, depth_remaining):
-    this_height = max(1, rel_map.get(x, y))
-    (rot, pow) = win_map.get(x, y)
-    deposit_fraction = max(
-        0.0,
-        1.0-(.9**(max(0, .3+this_height-prev_height)))
-    )
-
-    deposit_fraction *= (1-pow)
-    rai_map.increment(x, y, water*deposit_fraction)
-    water *= (1-deposit_fraction)
-
-    if rai_map.get(x, y) > 2:
-        rai_map.set(x, y, 3)
-
-    if depth_remaining == 0 or water < 0.04:
-        rai_map.increment(x, y, water) # dump remainder
-
-        if rai_map.get(x, y) > 2:
-            rai_map.set(x, y, 3)
-        return
-
-    angle_sets = [
+cell_angles = [
         (0.00*pi, 1, 0),    # right
         (0.25*pi, 1, -1),   # up-right
         (0.50*pi, 0, -1),   # up
@@ -252,35 +243,45 @@ def rain_cloud(x, y, water, rel_map, win_map, rai_map, prev_height, depth_remain
         (1.75*pi, 1, 1),    # down-right
     ]
 
-    spent_shares = 0
-    recurse_clouds = []
-    for (angle, go_x, go_y) in angle_sets:
-        diff = min(
-            abs(rot - angle),
-            abs(rot - angle + pi*2),
-            abs(rot - angle - pi*2)
-        )
-        if diff > pi/1.1:
-            continue
-        share = 1 / (diff + 0.04)
-        spent_shares += share
-        recurse_clouds.append((share, go_x, go_y))
-    for (share, go_x, go_y) in recurse_clouds:
-        x2, y2 = rel_map.correct_coordinate(x + go_x, y + go_y)
-        rain_cloud(x2, y2, water*share/spent_shares, rel_map, win_map, rai_map, this_height, depth_remaining-1)
-
-
 def rain_map(rel_map, win_map):
-    rai_map = Map.uniform_map_of_size(rel_map, 0)
-    for y in range(rel_map.height):
-        for x in range(rel_map.width):
-            # if x != 8 or y != 8: continue
-            if rel_map.get(x, y) != 0:
-                # clouds start in the ocean
-                continue
-            rain_cloud(x, y, 1, rel_map, win_map, rai_map, 1.0, 14)
+    rain_ticks = 30
 
-    rai_map.normalize(0, 255, integers=True)
+    def rain_tick(x, y):
+        (rot, pow) = win_map.get(x, y)
+        if rel_map.get(x, y) == 0:
+            rai_map.increment(x, y, win_map.get(x, y)[1]**.4)
+
+        blown_water = .8 * (pow**.2) * rai_map.get(x, y)
+        spent_shares = 0
+        clouds = []
+        for (angle, go_x, go_y) in cell_angles:
+            diff = min(
+                abs(rot - angle),
+                abs(rot - angle + pi * 2),
+                abs(rot - angle - pi * 2)
+            )
+            if diff > pi / 1.1:
+                continue
+            share = 1 / (diff + 0.25)
+            spent_shares += share
+            clouds.append((share, go_x, go_y))
+
+        for (share, go_x, go_y) in clouds:
+            x2, y2 = rel_map.correct_coordinate(x + go_x, y + go_y)
+            cloud_water = blown_water * share / spent_shares
+            rai_map.increment(x, y, -cloud_water)
+            rai_map.increment(x2, y2, cloud_water)
+        rai_map.set(x, y, rai_map.get(x, y)/2.0)
+
+    # all water starts with 1.0 rain, all land with 0.
+    rai_map = Map.uniform_map_of_size(rel_map, 0.0)
+
+    for _ in range(rain_ticks):
+        for y in range(rel_map.height):
+            for x in range(rel_map.width):
+                rain_tick(x, y)
+
+    rai_map.normalize(0, 255, integers=False)
     return rai_map
 
 def heat_map(rel_map, win_map, rai_map, july=True):
