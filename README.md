@@ -43,22 +43,26 @@ Identical format to input png image. This map is always generated, but it is esp
 
 ### Pressure System Map
 This map is rendered in grayscale. White and black represent highest and lowest barometric pressure respectively.
+
 ![Image of Relief Sample](https://github.com/sirkibsirkib/climate_cooker/blob/master/image_samples/01_pressure.png)
 
 ### Wind System Map
 This map's pixels each encode two different values: direction and speed.
 The rotation is mapped to hue, with all possible angles on the possible complete 2-radian circle being mapped to the color wheel (open some image manipulation program such as MS Paint or The GIMP for an interactive color wheel) angle 0 in red [255,0,0] maps to right/east, with the wheel rotating anticlockwise (the same orientation as is generally used in mathematics).
+
 ![Image of Wind Sample](https://github.com/sirkibsirkib/climate_cooker/blob/master/image_samples/03_wind.png)
 
 The intensity of the color encodes the wind speed. The brightest color encodes maximum speed, and a black pixel has a speed of zero.
 
 ### Precipitation Map
 Grayscale represents maximum and minimum values with white and black respectively.
+
 ![Image of Rain Sample](https://github.com/sirkibsirkib/climate_cooker/blob/master/image_samples/05_rain.png)
 
 
 ### Heat Map
-White and black map to maximum and minimum heat repspectively.
+White and black map to maximum and minimum heat respectively.
+
 ![Image of Heat Sample](https://github.com/sirkibsirkib/climate_cooker/blob/master/image_samples/07_heat.png)
 
 
