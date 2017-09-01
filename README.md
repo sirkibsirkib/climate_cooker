@@ -23,6 +23,8 @@ cyan | [0,255,255] | height 5
 purple | [255,0,255] | height 6
 yellow | [255,255,0] | height 7
 
+![Image of PNG Input Sample](https://github.com/sirkibsirkib/climate_cooker/blob/master/image_samples/png_input.png)
+
 ### TXT input
 The input map can be given as a txt file, with each line being interpreted as a horizontal row of cells, and each other character being interpreted as a cell. As with the png, the file provides height information. The table below details how to represent your map heights:
 
@@ -36,6 +38,8 @@ symbol(s) | interpretation
 6 | height 6
 7 8 9 | height 7
 anything else | height 0 (water)
+
+![Image of TXT Input Sample](https://github.com/sirkibsirkib/climate_cooker/blob/master/image_samples/txt_input.png)
 
 ## Interpreting Output Maps
 ### Relief Map
