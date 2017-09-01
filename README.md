@@ -43,6 +43,7 @@ Identical format to input png image. This map is always generated, but it is esp
 
 ### Pressure System Map
 This map is rendered in grayscale. White and black represent highest and lowest barometric pressure respectively.
+![Image of Relief Sample](https://github.com/sirkibsirkib/climate_cooker/blob/master/image_samples/01_pressure.png)
 
 ### Wind System Map
 This map's pixels each encode two different values: direction and speed.
